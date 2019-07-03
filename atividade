@@ -1,0 +1,204 @@
+---
+Machine Learning
+
+Atividade avaliativa 2 - Classificação
+
+Prof. Neylson Crepalde - Izabela Hendrix
+
+Ana Beatriz Martins, bioinformática
+
+Resolver os exercícios do livro Introduction to Statistical Learning with R (http://www-bcf.usc.edu/~gareth/ISL/) a partir da página 171:
+
+* No. 10 (todo exceto letras G e I);
+* No. 11 (todo exceto letra G);
+* No. 13 (todo menos KNN).
+---
+This question should be answered using the Weekly data set, which
+is part of the ISLR package. This data is similar in nature to the
+Smarket data from this chapter’s lab, except that it contains 1, 089
+weekly returns for 21 years, from the beginning of 1990 to the end of
+2010.
+
+```{r}
+install.packages("ISLR")
+library(ISLR)
+```
+
+```{r}
+summary(Weekly)
+
+```
+```{r}
+plot(Today~Lag1, col="darkred", data=Weekly)
+simplelm = lm(Today~Lag1, data=Weekly)
+abline(simplelm, lwd= 3, col= "darkgreen")
+```
+
+(b) Use the full data set to perform a logistic regression with
+Direction as the response and the five lag variables plus Volume
+as predictors. Use the summary function to print the results. Do
+any of the predictors appear to be statistically significant? If so,
+which ones? - Lag2 é significativo
+
+```{r}
+logmod = glm(Direction~Lag1+Lag2+Lag3+Lag4+Lag5+Volume,family = "binomial", data=Weekly)
+summary(logmod)
+```
+
+(c) Compute the confusion matrix and overall fraction of correct
+predictions. Explain what the confusion matrix is telling you
+about the types of mistakes made by logistic regression.
+
+```{r}
+probs = predict(logmod, type="response")
+preds = rep("Down", 1089)
+preds[probs > 0.5] = "Up"
+table(preds, Weekly$Direction)
+
+```
+
+```{r}
+hist(probs, breaks= 100, col= "darkred")
+abline(v = mean(probs), lwd = 2)
+```
+
+(d) Now fit the logistic regression model using a training data period
+from 1990 to 2008, with Lag2 as the only predictor. Compute the
+confusion matrix and the overall fraction of correct predictions
+for the held out data (that is, the data from 2009 and 2010).
+
+```{r}
+
+training.data = Weekly[Weekly$Year<2009,]
+test.data = Weekly[Weekly$Year>2008,]
+simpglm = glm(Direction~Lag2, data= training.data, family = "binomial")
+summary(simpglm)
+```
+
+
+```{r}
+testprobs = predict(simpglm, type="response", newdata = test.data)
+testdirs = Weekly$Direction[Weekly$Year>2008]
+plot(testprobs, col= ifelse(Weekly$Direction[Weekly$Year>2008]=="Down", "red","green"), pch=16)
+```
+
+
+```{r}
+testpreds = rep("Down", 104)
+testpreds[testprobs>0.5] = "Up"
+mean(probs)
+```
+
+```{r}
+table(testpreds, testdirs)
+```
+
+(e) Repeat (d) using LDA.
+
+```{r}
+lda.fit = lda(Direction~Lag2, data= training.data)
+lda.fit
+```
+```{r}
+lda.pred = predict(lda.fit, newdata=test.data, type="response")
+lda.class = lda.pred$class
+table(lda.class, test.data$Direction)
+```
+
+
+f) Repeat (d) using QDA
+```{r}
+qda.fit = qda(Direction~Lag2, data= training.data)
+qda.fit
+```
+```{r}
+qda.pred = predict(qda.fit, newdata=test.data, type="response")
+qda.class = qda.pred$class
+table(qda.class, test.data$Direction)
+```
+11. In this problem, you will develop a model to predict whether a given
+car gets high or low gas mileage based on the Auto data set.
+(a) Create a binary variable, mpg01, that contains a 1 if mpg contains
+a value above its median, and a 0 if mpg contains a value below
+its median. You can compute the median using the median()
+function. Note you may find it helpful to use the data.frame()
+function to create a single data set containing both mpg01 and
+the other Auto variables.
+
+```{r}
+auto = Auto
+auto$mpg01 = rep(0, length(auto$mpg))
+auto$mpg01[auto$mpg>median(auto$mpg)] = 1
+head(auto)
+```
+
+
+(b) Explore the data graphically in order to investigate the association between mpg01 and the other features. Which of the other
+features seem most likely to be useful in predicting mpg01? Scatterplots and boxplots may be useful tools to answer this question. Describe your findings.
+
+```{r}
+par(mfrow=c(2,2))
+plot(auto$year, auto$acceleration,, col= ifelse(auto$mpg01==0, "red", "green"), pch = 16)
+plot(auto$year, auto$weight, col= ifelse(auto$mpg01==0, "red", "green"), pch = 16)
+plot(auto$year, auto$horsepower, col= ifelse(auto$mpg01==0, "red", "green"), pch = 16)
+```
+
+
+(c) Split the data into a training set and a test set.
+```{r}
+idxs <- sample(1:dim(auto)[1], size=dim(auto)[1]*0.75)
+training <- auto[idxs,]
+test = auto[-idxs,]
+```
+
+
+(d) Perform LDA on the training data in order to predict mpg01 using the variables that seemed most associated with mpg01 in (b). What is the test error of the model obtained?
+
+```{r}
+lda.fit2 = lda(mpg01~displacement+weight+cylinders+year, data=training)
+lda.fit2
+```
+
+
+```{r}
+plot(lda.fit2)
+```
+
+(e) Perform QDA on the training data in order to predict mpg01 using the variables that seemed most associated with mpg01 in (b). What is the test error of the model obtained?
+
+```{r}
+qda.fit2 = qda(mpg01~displacement+weight+cylinders+year, data=training)
+qda.fit2
+```
+
+```{r}
+pred.qda2 = predict(qda.fit2, newdata=test, type="response")$class
+table(pred.qda2, test$mpg01)
+```
+
+(f) Perform logistic regression on the training data in order to predict mpg01 using the variables that seemed most associated with
+mpg01 in (b). What is the test error of the model obtained?
+
+```{r}
+logreg = glm(mpg01~displacement+weight+cylinders+year, family="binomial", data=training)
+summary(logreg)
+```
+
+```{r}
+probs = predict(logreg, test, type="response")
+preds = rep(0, dim(test)[1])
+preds[probs>0.5]=1            
+table(preds, auto$mpg01[-idxs])
+```
+```{r}
+par(mfrow=c(1,1))
+plot(probs, col= ifelse(test$mpg01==0, "red", "blue"), pch = 16)
+abline(h=0.5, lwd=3)
+```
+
+```{r}
+hist(probs, breaks = 100, col = "darkred")
+```
+
+
+
